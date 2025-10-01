@@ -33,7 +33,15 @@ def run(player_id:int, server: socket, active_terminal: Terminal, param):
         if(len(pages) > 1):    
             overwrite(c.RESET + c.YELLOW + f"\rModule has {len(pages)} help pages available. Type `help <module> <page #>` for more information.")
         if(len(param) == 2):    # if page_num is provided
-            page_num = int(param[1])
+            try:
+                page_num = int(param[1])
+            except ValueError:
+                # User entered a non-numeric value
+                ss.send_to_terminal(active_terminal, f"Error: Page number must be an integer, not '{param[1]}'")
+                page_num = 0
+            except IndexError:
+                # No second parameter provided
+                page_num = 0
             if not(param[1].isdigit()):
                 overwrite(c.RESET + c.RED + "\rInvalid parameter. Type `help <module> <page #>` for more information.")
                 return
