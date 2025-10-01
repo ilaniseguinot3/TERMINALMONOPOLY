@@ -5,7 +5,7 @@ import textwrap
 from utils.screenspace import MYCOLORS as c, Terminal, overwrite
 
 name = "Help List"
-author = "https://github.com/narcistiq"
+author = "https://github.com narcistiq"
 command = "help"
 persistent = False
     
@@ -29,28 +29,26 @@ def run(player_id:int, server: socket, active_terminal: Terminal, param):
         return
     else:
         lines = textwrap.wrap(help[module], 70)
-        pages = [lines[i:i+15] for i in range(0, len(lines), 15)] # TODO: Should perform extra checks for newline characters for better formatting
+        pages = [lines[i:i+15] for i in range(0, len(lines), 15)]
         if(len(pages) > 1):    
             overwrite(c.RESET + c.YELLOW + f"\rModule has {len(pages)} help pages available. Type `help <module> <page #>` for more information.")
         if(len(param) == 2):    # if page_num is provided
             try:
                 page_num = int(param[1])
+                # Check if page number is in valid range
+                if(page_num < 1 or page_num > len(pages)):
+                    overwrite(c.RESET + c.RED + f"\r{module.upper()} help does not have page {page_num}! Please select another page number.")
+                    return
             except ValueError:
                 # User entered a non-numeric value
-                ss.send_to_terminal(active_terminal, f"Error: Page number must be an integer, not '{param[1]}'")
-                page_num = 0
+                overwrite(c.RESET + c.RED + f"\rError: Page number must be an integer, not '{param[1]}'")
+                return
             except IndexError:
                 # No second parameter provided
-                page_num = 0
-            if not(param[1].isdigit()):
-                overwrite(c.RESET + c.RED + "\rInvalid parameter. Type `help <module> <page #>` for more information.")
-                return
-            elif(page_num < 1 or page_num > len(pages)):
-                overwrite(c.RESET + c.RED + f"\r{module.upper()} help does not have page {int(param[1])}! Please select another page number.")
-                return
-            else:
-                page = pages[page_num - 1]
-                module_text += "\n".join(line.center(75) for line in page)
+                page_num = 1
+            
+            page = pages[page_num - 1]
+            module_text += "\n".join(line.center(75) for line in page)
         else:   # just display the first page
             module_text += "\n".join(line.center(75) for line in pages[0])
         active_terminal.clear()
@@ -72,6 +70,6 @@ def get_module_text() -> dict:
         if file.endswith(".py"):
             file = file[:-3]
             module = importlib.import_module("modules_directory." + file)
-            if hasattr(module, 'help_text'): # Check if the module has 'command' and 'help_text' attributes
-                pairs[module.command] = module.help_text # Add the command and its corresponding module to the dictionary
+            if hasattr(module, 'help_text'):
+                pairs[module.command] = module.help_text
     return pairs
