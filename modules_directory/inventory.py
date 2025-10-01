@@ -69,15 +69,14 @@ class Inventory():
         return ret_val
 
 from socket import socket
-from screenspace import Terminal
-import networking as net
+from utils.screenspace import Terminal
+import utils.networking as net
 
 name = "Inventory Module"
 command = "inv"
 author = "https://github.com/adamgulde"
-description = "View all inventory items."
 version = "1.4 - Fixing inventory with non-fish items" 
-help_text = "Type INV to view your inventory."
+help_text = "Type INV to view your inventory. View all inventory items."
 persistent = False # No need to run additional commands after switching
 oof_params = {"player_id": None, "server": None} # Global parameters for out of focus function
 

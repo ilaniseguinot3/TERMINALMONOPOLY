@@ -1,14 +1,11 @@
-from screenspace import Terminal
-from style import MYCOLORS as COLORS
+from utils.screenspace import Terminal, MYCOLORS as COLORS, set_cursor
 from socket import socket
-from style import set_cursor, set_cursor_str
 
 name = "Calculator Module"
 command = "calc"
 author = "https://github.com/adamgulde"
-description = "Use a calculator."
 version = "1.3"
-help_text = "Type CALC to view your inventory."
+help_text = "Type CALC to view your inventory. Use a calculator."
 persistent = True # Should be able to run additional commands after switching
 # No out of focus function needed, because nothing will happen when the terminal is out of focus
 

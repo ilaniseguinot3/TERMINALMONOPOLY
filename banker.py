@@ -1,48 +1,43 @@
-import itertools
 from time import sleep
 import sys
 import os
+import threading
+import itertools
 # Start the loading animation in a separate thread
 loading = True
-def loading_animation(text="Loading"):
+def loading_animation() -> None:
     for frame in itertools.cycle(['|', '/', '-', '\\']):
         if not loading:
             break
-        sys.stdout.write(f'\r{text} {frame}')
+        sys.stdout.write(f'\rLoading imports {frame}')
         sys.stdout.flush()
         sleep(0.1)
-    sys.stdout.write('\rLoading complete!     \n')
-import threading
-animation_thread = threading.Thread(target=loading_animation, args=["Loading imports"])
+    sys.stdout.write(f'\rLoading imports complete!     \n')
+animation_thread = threading.Thread(target=loading_animation)
 animation_thread.start()
 
 # Python Builtin Utilities
 import socket
-import random
 import select
-import importlib
 
-# Our Utilities
-from style import MYCOLORS as COLORS, print_w_dots, choose_colorset
-import screenspace as ss 
-from screenspace import Trading_Output, Main_Output, Monopoly_Game_Output, Casino_Output
-import gamemanager as gm
-import networking as net
-import validation as valid
-from utils import Client
-
+# Our Utilities 
+import utils.screenspace as ss 
+from utils.screenspace import MYCOLORS as COLORS, print_w_dots, choose_colorset, Main_Output, Monopoly_Game_Output, Casino_Output # specific imports, helpful on their own
+import utils.networking as net
+from utils.utils import Client, validate_port, is_port_unused, loading_animation
 # Modules
-import modules_directory.tictactoe as tictactoe
 import modules_directory.inventory as inv
-# Dynamically import handle functions from modules in modules_directory as handle_<module_name>
-modules_path = "modules_directory"
-for filename in os.listdir(modules_path):
-    if filename.endswith(".py") and filename != "__init__.py":
-        module_name = filename[:-3]  # Remove the .py extension
-        module = importlib.import_module(f"{modules_path}.{module_name}")
-        if hasattr(module, "handle"):
-            globals()[f"handle_{module_name}"] = getattr(module, "handle")
-
+from modules_directory.loan import Loan
+# Import all Module handle functions - add here as you create more modules
+from modules_directory.shop import handle as handle_shop
+from modules_directory.deed import handle as handle_deed
+from modules_directory.balance import handle as handle_balance
+from modules_directory.chat import handle as handle_chat
+from modules_directory.trading import handle as handle_trading
+from modules_directory.plist import handle as handle_plist
+from modules_directory.inventory import handle as handle_inventory
+from modules_directory.casino import handle as handle_casino
+from modules_directory.fishing import handle as handle_fishing
 
 # Monopoly Game
 import monopoly_directory.monopoly as mply
@@ -59,6 +54,7 @@ num_players = 0
 play_monopoly = True
 monopoly_unit_test = 6 # assume 1 player, 2 owned properties. See monopoly.py unittest for more options
 messages = []
+DEBT_OK = False
 
 def add_to_output_area(output_type: str, text: str, color: str = COLORS.WHITE) -> None:
     """
@@ -74,8 +70,6 @@ def add_to_output_area(output_type: str, text: str, color: str = COLORS.WHITE) -
     """
     if output_type == "Monopoly":
         Monopoly_Game_Output.add_output(text, color)
-    elif output_type == "TicTacToe":
-        TTT_Output.add_output(text, color)
     elif output_type == "Casino":
         Casino_Output.add_output(text, color)
     else:
@@ -109,7 +103,7 @@ def start_server() -> socket.socket:
         # Choose a port that is free
         port = input("Choose a port, such as 3131: ")
     
-        while not valid.validate_port(port) or not valid.is_port_unused(int(port)):
+        while not validate_port(port) or not is_port_unused(int(port)):
             port = input("Invalid port. Choose a port, such as 3131: ")
 
     port = int(port) # Convert port to int for socket binding
@@ -376,7 +370,8 @@ def handle_data(data: str, client: socket.socket) -> None:
         handle_balance(data, client, mply, current_client.PlayerObject.cash, current_client.PlayerObject.properties)
 
     elif data.startswith('casino'):
-        handle_casino(data, client, change_balance, add_to_output_area, current_client.id, current_client.name)
+        handle_casino(data, client, change_balance, add_to_output_area, current_client.id, current_client.name, DEBT_OK)
+
     elif data.startswith('attack'):
         #run the attack similar to casino on client side and send game to player attacked, then send resulting command back
         handle_attack(data, current_client, client)
@@ -397,7 +392,9 @@ def handle_data(data: str, client: socket.socket) -> None:
         command_data = data.split(' ')
         term = int(command_data[1])
         net.send_message(client, str(current_client.terminal_statuses[term]))
-    
+
+    elif data.startswith('fish'):
+        handle_fishing(client, current_client.inventory)
 
     elif data.startswith('kill') or data.startswith('disable') or data.startswith('active') or data.startswith('busy'):
         """
@@ -619,13 +616,17 @@ def monopoly_controller(unit_test) -> None:
     while True:
         sleep(1)
         if mply.turn != last_turn:
-            ss.set_cursor(0, 20)
-            last_turn = mply.turn
-            net.send_notif(clients[mply.turn].socket, mply.get_gameboard() + ss.set_cursor_str(0, 38) + "It's your turn. Type roll to roll the dice.", "MPLY:")
-            clients[mply.turn].can_roll = True
-            # ss.set_cursor(ss.MONOPOLY_OUTPUT_COORDINATES[0]+1, ss.MONOPOLY_OUTPUT_COORDINATES[1]+1)
-            add_to_output_area("Monopoly", f"Player turn: {mply.turn}. Sent gameboard to {clients[mply.turn].name}.")
-
+            # if disconnect, move to next player
+            try:
+                ss.set_cursor(0, 20)
+                last_turn = mply.turn
+                net.send_notif(clients[mply.turn].socket, mply.get_gameboard() + ss.set_cursor_str(0, 38) + "It's your turn. Type roll to roll the dice.", "MPLY:")
+                clients[mply.turn].can_roll = True
+                # ss.set_cursor(ss.MONOPOLY_OUTPUT_COORDINATES[0]+1, ss.MONOPOLY_OUTPUT_COORDINATES[1]+1)
+                add_to_output_area("Monopoly", f"Player turn: {mply.turn}. Sent gameboard to {clients[mply.turn].name}.")
+            except:
+                add_to_output_area("Monopoly", f"Player turn: {mply.turn}. Disconnected")
+                mply.end_turn()
 def monopoly_game(client: Client = None, cmd: str = None) -> None:
     """
     Description:
@@ -687,6 +688,7 @@ def monopoly_game(client: Client = None, cmd: str = None) -> None:
             net.send_notif(client.socket, ret_val, "MPLY:")
 
 def handle_loan(data: str, client_socket: socket.socket, change_balance: callable, add_to_output_area: callable, player_id: int, player_name: str) -> None:
+
     """
     Handles loan requests from players.
     
@@ -718,18 +720,19 @@ def handle_loan(data: str, client_socket: socket.socket, change_balance: callabl
             if amount <= 0 or amount > 2000:
                 net.send_message(client_socket, "High interest loans must be between $1 and $2000.")
                 return
-            interest_rate = 0.15  # 15% interest for high loans
+            player_loan = Loan(amount, True)
             
         elif loan_type == "low":
             if amount <= 0 or amount > 500:
                 net.send_message(client_socket, "Low interest loans must be between $1 and $500.")
                 return
-            interest_rate = 0.05  # 5% interest for low loans
+            player_loan = Loan(amount, False)
             
         else:
             net.send_message(client_socket, "Invalid loan type. Choose 'high' or 'low'.")
             return
         
+        interest_rate = player_loan.interest_rate
         # Calculate the total amount to be repaid (for informational purposes)
         total_repayment = int(amount * (1 + interest_rate))
         
@@ -757,6 +760,9 @@ if __name__ == "__main__":
 
     if "-silent" in sys.argv:
         ss.VERBOSE = False
+
+    if "-debtok" in sys.argv:
+        DEBT_OK = True
 
     set_unittest() 
     # set_gamerules()

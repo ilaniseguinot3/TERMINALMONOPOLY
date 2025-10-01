@@ -1,16 +1,14 @@
-from style import MYCOLORS as COLORS, graphics as g
-import screenspace as ss
+from utils.screenspace import MYCOLORS as COLORS, g, Terminal
 from socket import socket
 
 name = "Properties List"
 author = "https://github.com/adamgulde"
-description = "View property deed details."
 version = "1.1" # Moved to its own file
 command = "list"
-help_text = "Type LIST to view all properties on the board."
+help_text = "Type LIST to view all properties on the board. View property deed details."
 persistent = False
     
-def run(player_id:int, server: socket, active_terminal: ss.Terminal):
+def run(player_id:int, server: socket, active_terminal: Terminal):
     """
     Lists all properties on the board by calling the property list stored in graphics.
     

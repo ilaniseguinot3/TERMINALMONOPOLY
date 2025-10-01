@@ -1,14 +1,13 @@
-import screenspace as ss
+import utils.screenspace as ss
+g = ss.g
 from socket import socket
-import networking as net
-from style import graphics as g, set_cursor_str
+import utils.networking as net
 
 name = "Balance Module"
 author = "https://github.com/adamgulde"
-description = "View balance, net worth, stocks, and property deeds."
 version = "1.0" # Moved to its own file
 command = "bal"
-help_text = "Type BAL to view your cash and assets."
+help_text = "Type BAL to view your cash and assets. View balance, net worth, stocks, and property deeds."
 persistent = False
 oof_params = {}
 
@@ -81,7 +80,7 @@ def oof() -> str:
 
     for i in range(ss.rows):
         if i < len(info_lines): # Check if there is a line in info
-            ret_val += set_cursor_str(0,i) + info_lines[i] # Only info line, set cursor to the beginning of the line.a
+            ret_val += ss.set_cursor_str(0,i) + info_lines[i] # Only info line, set cursor to the beginning of the line.a
 
     return ret_val
     
